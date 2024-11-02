@@ -2,6 +2,10 @@
 --
 -- by handeyeco
 
+max_bend = 16383
+bend_center = 8192
+max_midi_byte = 127
+
 -- list of virtual MIDI ports
 midi_devices = {}
 -- MIDI in connection
@@ -20,6 +24,9 @@ keyboard_offset = -57
 
 -- note_mapping = { 60: [ { base: 60, bend: 8000, velocity: 100 }, { base: 42, bend: 9456, velocity: 120 } ] }
 note_mapping = {}
+
+-- which parameter on the note we're editing
+param_index = 1
 
 -- NORNS LIFECYCLE CALLBACKS
 -- NORNS LIFECYCLE CALLBACKS
@@ -49,8 +56,57 @@ function init()
   setup_midi_callback()
 end
 
+function get_base_mapping(note)
+  return {
+    base=note,
+    bend=bend_center,
+    velocity=max_midi_byte,
+  }
+end
+
+function handle_edit_param_enc(delta)
+  if not editing then
+    return
+  end
+
+  local note_settings = note_mapping[editing]
+  if note_settings == nil then
+    note_settings = get_base_mapping(editing)
+    note_mapping[editing] = note_settings
+  end
+
+  -- edit base note
+  if param_index == 1 then
+    note_settings["base"] = util.clamp(note_settings["base"] + delta, 0, max_midi_byte)
+  
+  -- edit bend
+  elseif param_index == 2 then
+    note_settings["bend"] = util.clamp(note_settings["bend"] + delta, 0, max_bend)
+
+  -- edit velocity
+  elseif param_index == 3 then
+    note_settings["velocity"] = util.clamp(note_settings["velocity"] + delta, 0, max_midi_byte)
+
+  end
+
+  tab.print(note_mapping[editing])
+end
+
 -- encoder callback
 function enc(n,d)
+  if n == 1 then
+    return
+  end
+
+  if editing then
+    if n == 2 then
+      param_index = util.clamp(param_index + d, 1, 3)
+    elseif n == 3 then
+      handle_edit_param_enc(d)
+    end
+  end
+
+  redraw()
 end
 
 -- key callback
@@ -67,15 +123,52 @@ function redraw()
   if editing then
     notes_to_highlight[editing] = editing
 
-    screen.move(0, 14)
-    screen.text("Base note: "..key_map[editing])
-    draw_setting_line(24, "P", 16384/2, 16384)
-    draw_setting_line(35, "V", 128, 128)
+    local base_note_settings = get_base_mapping(editing)
+
+    local note_settings = note_mapping[editing]
+    if note_settings == nil then
+      note_settings = base_note_settings
+    end
+
+    -- edit base note
+    local base_yOff = 14
+    set_active_level(param_index, 1)
+    screen.move(10, base_yOff)
+    screen.text("Base note: "..key_map[note_settings["base"]])
+    mark_dirty(base_yOff, note_settings["base"] ~= base_note_settings["base"])
+
+    -- edit pitch offset
+    local bend_yOff = 25
+    set_active_level(param_index, 2)
+    screen.move(10, bend_yOff)
+    screen.text("B: "..note_settings["bend"])
+    mark_dirty(bend_yOff, note_settings["bend"] ~= base_note_settings["bend"])
+
+    -- edit velocity
+    local velocity_yOff = 36
+    set_active_level(param_index, 3)
+    screen.move(10, velocity_yOff)
+    screen.text("V: "..note_settings["velocity"])
+    mark_dirty(velocity_yOff, note_settings["velocity"] ~= base_note_settings["velocity"])
   end
 
-  draw_keyboard(60, notes_to_highlight, {}, false)
+  local notes_to_fill = {}
+  for k,_ in pairs(note_mapping) do
+    notes_to_fill[k] = k
+  end
+  draw_keyboard(60, notes_to_highlight, notes_to_fill, false)
 
   screen.update()
+end
+
+function mark_dirty(yOff, isDirty)
+  if not isDirty then
+    return
+  end
+
+  screen.move(2, yOff)
+  screen.level(2)
+  screen.text("-")
 end
 
 -- called when script unloads
@@ -159,16 +252,12 @@ function generate_key_map()
   end
 end
 
-function draw_setting_line(yOff, label, currVal, totalVal)
-  screen.move(0, yOff+1)
-  screen.text(label)
-
-  local line_offset = linear_map(currVal, 0, totalVal, 8, 128)
-
-  screen.move(8, yOff)
-  screen.line(128, yOff)
-  screen.move(line_offset, yOff-2)
-  screen.line(line_offset, yOff+1)
+function set_active_level(actual, active)
+  if actual == active then
+    screen.level(14)
+  else
+    screen.level(1)
+  end
 end
 
 -- draw an individual key on the keyboard
