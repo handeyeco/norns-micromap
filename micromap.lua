@@ -59,12 +59,16 @@ function init()
 end
 
 function get_base_map(note)
-  local arr = {}
-  arr[1] = {
+  return {
     base=note,
     bend=bend_center,
     velocity=max_midi_byte,
   }
+end
+
+function get_base_arr(note)
+  local arr = {}
+  arr[1] = get_base_map(note)
   return arr
 end
 
@@ -73,7 +77,7 @@ function get_mapped_or_base(note)
     return notes_map[note]
   end
 
-  return get_base_map(note)
+  return get_base_arr(note)
 end
 
 function handle_edit_param_enc(delta)
@@ -83,7 +87,7 @@ function handle_edit_param_enc(delta)
 
   local note_arr = notes_map[editing]
   if note_arr == nil then
-    note_arr = get_base_map(editing)
+    note_arr = get_base_arr(editing)
     note_arr[editing] = note_map
   end
 
@@ -139,6 +143,16 @@ end
 
 -- key callback
 function key(n,z)
+  if editing and n == 2 then
+    local note_arr = get_mapped_or_base(editing)
+    if note_index > #note_arr then
+      note_arr[note_index] = get_base_map(editing)
+      notes_map[editing] = note_arr
+    end
+  end
+
+  tab.print(notes_map[editing])
+  redraw()
 end
 
 -- update screen
@@ -151,7 +165,7 @@ function redraw()
   if editing then
     notes_to_highlight[editing] = editing
 
-    local base_map = get_base_map(editing)
+    local base_map = get_base_arr(editing)
     local base_note_settings = base_map[1]
 
     local note_arr = notes_map[editing]
