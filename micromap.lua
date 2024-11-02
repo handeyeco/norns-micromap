@@ -13,7 +13,7 @@ in_midi = nil
 -- MIDI out connection
 out_midi = nil
 
-editing = nil
+editing = 60
 pressed = nil
 
 -- midi note number to note name/octave
@@ -22,9 +22,11 @@ key_map = {}
 -- used to move the keyboard left/right (x-position offset)
 keyboard_offset = -57
 
--- note_mapping = { 60: [ { base: 60, bend: 8000, velocity: 100 }, { base: 42, bend: 9456, velocity: 120 } ] }
-note_mapping = {}
+-- notes_map = { 60: [ { base: 60, bend: 8000, velocity: 100 }, { base: 42, bend: 9456, velocity: 120 } ] }
+notes_map = {}
 
+-- which note in a mapping we're editing
+note_index = 1
 -- which parameter on the note we're editing
 param_index = 1
 
@@ -56,12 +58,22 @@ function init()
   setup_midi_callback()
 end
 
-function get_base_mapping(note)
-  return {
+function get_base_map(note)
+  local arr = {}
+  arr[1] = {
     base=note,
     bend=bend_center,
     velocity=max_midi_byte,
   }
+  return arr
+end
+
+function get_mapped_or_base(note)
+  if notes_map[note] then
+    return notes_map[note]
+  end
+
+  return get_base_map(note)
 end
 
 function handle_edit_param_enc(delta)
@@ -69,27 +81,43 @@ function handle_edit_param_enc(delta)
     return
   end
 
-  local note_settings = note_mapping[editing]
+  local note_arr = notes_map[editing]
+  if note_arr == nil then
+    note_arr = get_base_map(editing)
+    note_arr[editing] = note_map
+  end
+
+  -- edit note index
+  if param_index == 1 then
+    -- don't go above number of notes + 1
+    note_index = util.clamp(note_index + delta, 1, #note_arr + 1)
+    -- don't go above 16 (max number of MPE notes)
+    note_index = util.clamp(note_index, 1, 16)
+    return
+  end
+
+  local note_settings = note_arr[note_index]
   if note_settings == nil then
-    note_settings = get_base_mapping(editing)
-    note_mapping[editing] = note_settings
+    return
   end
 
   -- edit base note
-  if param_index == 1 then
+  if param_index == 2 then
     note_settings["base"] = util.clamp(note_settings["base"] + delta, 0, max_midi_byte)
   
   -- edit bend
-  elseif param_index == 2 then
+  elseif param_index == 3 then
     note_settings["bend"] = util.clamp(note_settings["bend"] + delta, 0, max_bend)
 
   -- edit velocity
-  elseif param_index == 3 then
+  elseif param_index == 4 then
     note_settings["velocity"] = util.clamp(note_settings["velocity"] + delta, 0, max_midi_byte)
 
   end
 
-  tab.print(note_mapping[editing])
+  note_arr[note_index] = note_settings
+  notes_map[editing] = note_arr
+  tab.print(notes_map)
 end
 
 -- encoder callback
@@ -100,7 +128,7 @@ function enc(n,d)
 
   if editing then
     if n == 2 then
-      param_index = util.clamp(param_index + d, 1, 3)
+      param_index = util.clamp(param_index + d, 1, 4)
     elseif n == 3 then
       handle_edit_param_enc(d)
     end
@@ -123,37 +151,55 @@ function redraw()
   if editing then
     notes_to_highlight[editing] = editing
 
-    local base_note_settings = get_base_mapping(editing)
+    local base_map = get_base_map(editing)
+    local base_note_settings = base_map[1]
 
-    local note_settings = note_mapping[editing]
-    if note_settings == nil then
-      note_settings = base_note_settings
+    local note_arr = notes_map[editing]
+    if note_arr == nil then
+      note_arr = base_map
+    end
+
+    local note_settings = note_arr[note_index]
+
+    -- edit note index
+    local base_yOff = 10
+    set_active_level(param_index, 1)
+    screen.move(10, base_yOff)
+    local next_note_index = util.clamp(#note_arr + 1, 1, 16)
+    screen.text("Note index: "..note_index.."/"..next_note_index)
+
+    if note_index > #note_arr then
+      screen.move(10, 26)
+      screen.level(1)
+      screen.text("Press k2 to add note")
+      screen.update()
+      return
     end
 
     -- edit base note
-    local base_yOff = 14
-    set_active_level(param_index, 1)
+    local base_yOff = 18
+    set_active_level(param_index, 2)
     screen.move(10, base_yOff)
     screen.text("Base note: "..key_map[note_settings["base"]])
     mark_dirty(base_yOff, note_settings["base"] ~= base_note_settings["base"])
 
     -- edit pitch offset
-    local bend_yOff = 25
-    set_active_level(param_index, 2)
+    local bend_yOff = 26
+    set_active_level(param_index, 3)
     screen.move(10, bend_yOff)
-    screen.text("B: "..note_settings["bend"])
+    screen.text("Bend: "..note_settings["bend"])
     mark_dirty(bend_yOff, note_settings["bend"] ~= base_note_settings["bend"])
 
     -- edit velocity
-    local velocity_yOff = 36
-    set_active_level(param_index, 3)
+    local velocity_yOff = 34
+    set_active_level(param_index, 4)
     screen.move(10, velocity_yOff)
-    screen.text("V: "..note_settings["velocity"])
+    screen.text("Velocity: "..note_settings["velocity"])
     mark_dirty(velocity_yOff, note_settings["velocity"] ~= base_note_settings["velocity"])
   end
 
   local notes_to_fill = {}
-  for k,_ in pairs(note_mapping) do
+  for k,_ in pairs(notes_map) do
     notes_to_fill[k] = k
   end
   draw_keyboard(60, notes_to_highlight, notes_to_fill, false)
@@ -201,19 +247,17 @@ function stop_all_notes()
 end
 
 function handle_midi_event(data)
-  print("Handling MIDI event")
   local message = midi.to_msg(data)
-  tab.print(message)
 
   if message.type == "note_on" and not pressed then
     pressed = message.note
     editing = message.note
 
-    local middlePitchBend = 8192
-    local lPitch = middlePitchBend - 200
-    local hPitch = middlePitchBend + 200
-    out_midi:pitchbend(math.random(lPitch, hPitch), 1)
-    out_midi:note_on(message.note, 100, 1)
+    local notes_arr = get_mapped_or_base(pressed)
+    local note_settings = notes_arr[1]
+
+    out_midi:pitchbend(note_settings["bend"], 1)
+    out_midi:note_on(note_settings["base"], note_settings["velocity"], 1)
   elseif message.type == "note_off" and message.note == pressed then
     pressed = nil
 
