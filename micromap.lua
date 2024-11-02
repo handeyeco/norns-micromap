@@ -27,8 +27,21 @@ notes_map = {}
 
 -- which note in a mapping we're editing
 note_index = 1
+
 -- which parameter on the note we're editing
 param_index = 1
+-- change trigger note
+PARAM_INDEX_TRIGGER = 1
+-- change mapped note index
+PARAM_INDEX_NOTE = 2
+-- change base note
+PARAM_INDEX_BASE = 3
+-- change pitch bend
+PARAM_INDEX_BEND = 4
+-- change velocity
+PARAM_INDEX_VELOCITY = 5
+-- delete option
+PARAM_INDEX_DELETE = 6
 
 shift_pressed = false
 
@@ -89,8 +102,14 @@ function handle_edit_param_enc(delta)
     note_arr[editing] = note_map
   end
 
+    -- edit trigger note
+    if param_index == PARAM_INDEX_TRIGGER then
+      editing = util.clamp(editing + delta, 0, max_midi_byte)
+      return
+    end
+
   -- edit note index
-  if param_index == 1 then
+  if param_index == PARAM_INDEX_NOTE then
     -- don't go above number of notes + 1
     note_index = util.clamp(note_index + delta, 1, #note_arr + 1)
     -- don't go above 15 (max number of MPE notes)
@@ -104,17 +123,17 @@ function handle_edit_param_enc(delta)
   end
 
   -- edit base note
-  if param_index == 2 then
+  if param_index == PARAM_INDEX_BASE then
     local mapped_delta = (shift_pressed and delta * 12 or delta)
     note_settings["base"] = util.clamp(note_settings["base"] + mapped_delta, 0, max_midi_byte)
   
   -- edit bend
-  elseif param_index == 3 then
+  elseif param_index == PARAM_INDEX_BEND then
     local mapped_delta = (shift_pressed and delta * 100 or delta)
     note_settings["bend"] = util.clamp(note_settings["bend"] + mapped_delta, 0, max_bend)
 
   -- edit velocity
-  elseif param_index == 4 then
+  elseif param_index == PARAM_INDEX_VELOCITY then
     local mapped_delta = (shift_pressed and delta * 10 or delta)
     note_settings["velocity"] = util.clamp(note_settings["velocity"] + mapped_delta, 1, max_midi_byte)
 
@@ -133,7 +152,7 @@ function enc(n,d)
   if editing then
     if n == 2 then
       -- TODO prevent scrolling on new note page
-      local max_param_index = (notes_map[editing] == nil and 4 or 5)
+      local max_param_index = (notes_map[editing] == nil and 5 or 6)
       param_index = util.clamp(param_index + d, 1, max_param_index)
     elseif n == 3 then
       handle_edit_param_enc(d)
@@ -156,7 +175,7 @@ function key(n,z)
         notes_map[editing] = note_arr
 
       -- delete
-      elseif param_index == 5 then
+      elseif param_index == PARAM_INDEX_DELETE then
         -- delete whole map
         if note_index == 1 then
           notes_map[editing] = nil
@@ -205,9 +224,15 @@ function redraw()
 
     local note_settings = note_arr[note_index]
 
+    -- edit trigger note
+    local trigger_yOff = 10
+    set_active_level(param_index, PARAM_INDEX_TRIGGER)
+    screen.move(10, trigger_yOff)
+    screen.text("Trigger: "..key_map[editing])
+
     -- edit note index
-    local base_yOff = 10
-    set_active_level(param_index, 1)
+    local base_yOff = 18
+    set_active_level(param_index, PARAM_INDEX_NOTE)
     screen.move(10, base_yOff)
     local next_note_index = util.clamp(#note_arr + 1, 1, 15)
     screen.text("Note index: "..note_index.."/"..next_note_index)
@@ -221,33 +246,33 @@ function redraw()
     end
 
     -- edit base note
-    local base_yOff = 18
-    set_active_level(param_index, 2)
+    local base_yOff = 26
+    set_active_level(param_index, PARAM_INDEX_BASE)
     screen.move(10, base_yOff)
     screen.text("Base note: "..key_map[note_settings["base"]])
     mark_dirty(base_yOff, note_settings["base"] ~= base_note_settings["base"])
 
     -- edit pitch offset
-    local bend_yOff = 26
-    set_active_level(param_index, 3)
+    local bend_yOff = 34
+    set_active_level(param_index, PARAM_INDEX_BEND)
     screen.move(10, bend_yOff)
     screen.text("Bend: "..note_settings["bend"])
     mark_dirty(bend_yOff, note_settings["bend"] ~= base_note_settings["bend"])
 
     -- edit velocity
-    local velocity_yOff = 34
-    set_active_level(param_index, 4)
+    local velocity_yOff = 42
+    set_active_level(param_index, PARAM_INDEX_VELOCITY)
     screen.move(10, velocity_yOff)
     screen.text("Velocity: "..note_settings["velocity"])
     mark_dirty(velocity_yOff, note_settings["velocity"] ~= base_note_settings["velocity"])
 
     -- delete
     if notes_map[editing] ~= nil then
-      local delete_yOff = 42
-      set_active_level(param_index, 5)
+      local delete_yOff = 50
+      set_active_level(param_index, PARAM_INDEX_DELETE)
       screen.move(10, delete_yOff)
       local delete_text = (note_index == 1 and "Delete key map" or "Delete note")
-      if param_index == 5 then
+      if param_index == PARAM_INDEX_DELETE then
         delete_text = delete_text.." (k2)"
       end
       screen.text(delete_text)
