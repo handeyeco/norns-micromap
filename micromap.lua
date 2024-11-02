@@ -30,6 +30,8 @@ note_index = 1
 -- which parameter on the note we're editing
 param_index = 1
 
+shift_pressed = false
+
 -- NORNS LIFECYCLE CALLBACKS
 -- NORNS LIFECYCLE CALLBACKS
 -- NORNS LIFECYCLE CALLBACKS
@@ -103,15 +105,18 @@ function handle_edit_param_enc(delta)
 
   -- edit base note
   if param_index == 2 then
-    note_settings["base"] = util.clamp(note_settings["base"] + delta, 0, max_midi_byte)
+    local mapped_delta = (shift_pressed and delta * 12 or delta)
+    note_settings["base"] = util.clamp(note_settings["base"] + mapped_delta, 0, max_midi_byte)
   
   -- edit bend
   elseif param_index == 3 then
-    note_settings["bend"] = util.clamp(note_settings["bend"] + delta, 0, max_bend)
+    local mapped_delta = (shift_pressed and delta * 100 or delta)
+    note_settings["bend"] = util.clamp(note_settings["bend"] + mapped_delta, 0, max_bend)
 
   -- edit velocity
   elseif param_index == 4 then
-    note_settings["velocity"] = util.clamp(note_settings["velocity"] + delta, 0, max_midi_byte)
+    local mapped_delta = (shift_pressed and delta * 10 or delta)
+    note_settings["velocity"] = util.clamp(note_settings["velocity"] + mapped_delta, 1, max_midi_byte)
 
   end
 
@@ -140,7 +145,7 @@ end
 
 -- key callback
 function key(n,z)
-  -- release actions
+  -- press actions
   if z == 1 then
     if editing and n == 2 then
       local note_arr = get_mapped_or_base(editing)
@@ -166,6 +171,14 @@ function key(n,z)
 
         end
       end
+    elseif n == 3 then
+      shift_pressed = true
+    end
+
+  -- release actions
+  elseif z == 0 then
+    if n == 3 then
+      shift_pressed = false
     end
   end
 
@@ -233,7 +246,7 @@ function redraw()
       local delete_yOff = 42
       set_active_level(param_index, 5)
       screen.move(10, delete_yOff)
-      local delete_text = (note_index == 1 and "Delete full mapping" or "Delete note")
+      local delete_text = (note_index == 1 and "Delete key map" or "Delete note")
       if param_index == 5 then
         delete_text = delete_text.." (k2)"
       end
