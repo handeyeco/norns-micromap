@@ -121,7 +121,6 @@ function handle_edit_param_enc(delta)
 
   note_arr[note_index] = note_settings
   notes_map[editing] = note_arr
-  tab.print(notes_map)
 end
 
 -- encoder callback
@@ -132,7 +131,8 @@ function enc(n,d)
 
   if editing then
     if n == 2 then
-      param_index = util.clamp(param_index + d, 1, 4)
+      local max_param_index = (notes_map[editing] == nil and 4 or 5)
+      param_index = util.clamp(param_index + d, 1, max_param_index)
     elseif n == 3 then
       handle_edit_param_enc(d)
     end
@@ -143,15 +143,35 @@ end
 
 -- key callback
 function key(n,z)
-  if editing and n == 2 then
-    local note_arr = get_mapped_or_base(editing)
-    if note_index > #note_arr then
-      note_arr[note_index] = get_base_map(editing)
-      notes_map[editing] = note_arr
+  -- release actions
+  if z == 1 then
+    if editing and n == 2 then
+      local note_arr = get_mapped_or_base(editing)
+
+      -- add a new note
+      if note_index > #note_arr then
+        note_arr[note_index] = get_base_map(editing)
+        notes_map[editing] = note_arr
+
+      -- delete
+      elseif param_index == 5 then
+        -- delete whole map
+        if note_index == 1 then
+          notes_map[editing] = nil
+          param_index = 1
+
+        -- delete one note
+        else
+          table.remove(note_arr, note_index)
+          notes_map[editing] = note_arr
+          note_index = 1
+          param_index = 1
+
+        end
+      end
     end
   end
 
-  tab.print(notes_map[editing])
   redraw()
 end
 
@@ -210,6 +230,18 @@ function redraw()
     screen.move(10, velocity_yOff)
     screen.text("Velocity: "..note_settings["velocity"])
     mark_dirty(velocity_yOff, note_settings["velocity"] ~= base_note_settings["velocity"])
+
+    -- delete
+    if notes_map[editing] ~= nil then
+      local delete_yOff = 42
+      set_active_level(param_index, 5)
+      screen.move(10, delete_yOff)
+      local delete_text = (note_index == 1 and "Delete full mapping" or "Delete note")
+      if param_index == 5 then
+        delete_text = delete_text.." (k2)"
+      end
+      screen.text(delete_text)
+    end
   end
 
   local notes_to_fill = {}
@@ -264,6 +296,11 @@ function handle_midi_event(data)
   local message = midi.to_msg(data)
 
   if message.type == "note_on" and not pressed then
+    if editing ~= message.note then
+      note_index = 1
+      param_index = 1
+    end
+
     pressed = message.note
     editing = message.note
 
