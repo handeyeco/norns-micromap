@@ -51,10 +51,6 @@ function init()
     options = midi_devices, default = 2,
     action = setup_midi_callback}
 
-  params:add{type = "number", id = "midi_out_channel", name = "midi out channel",
-    min = 1, max = 16, default = 1,
-    action = setup_midi_callback}
-
   setup_midi_callback()
 end
 
@@ -95,8 +91,8 @@ function handle_edit_param_enc(delta)
   if param_index == 1 then
     -- don't go above number of notes + 1
     note_index = util.clamp(note_index + delta, 1, #note_arr + 1)
-    -- don't go above 16 (max number of MPE notes)
-    note_index = util.clamp(note_index, 1, 16)
+    -- don't go above 15 (max number of MPE notes)
+    note_index = util.clamp(note_index, 1, 15)
     return
   end
 
@@ -131,6 +127,7 @@ function enc(n,d)
 
   if editing then
     if n == 2 then
+      -- TODO prevent scrolling on new note page
       local max_param_index = (notes_map[editing] == nil and 4 or 5)
       param_index = util.clamp(param_index + d, 1, max_param_index)
     elseif n == 3 then
@@ -199,7 +196,7 @@ function redraw()
     local base_yOff = 10
     set_active_level(param_index, 1)
     screen.move(10, base_yOff)
-    local next_note_index = util.clamp(#note_arr + 1, 1, 16)
+    local next_note_index = util.clamp(#note_arr + 1, 1, 15)
     screen.text("Note index: "..note_index.."/"..next_note_index)
 
     if note_index > #note_arr then
@@ -307,12 +304,20 @@ function handle_midi_event(data)
     local notes_arr = get_mapped_or_base(pressed)
     local note_settings = notes_arr[1]
 
-    out_midi:pitchbend(note_settings["bend"], 1)
-    out_midi:note_on(note_settings["base"], note_settings["velocity"], 1)
-  elseif message.type == "note_off" and message.note == pressed then
-    pressed = nil
+    for i, note_settings in pairs(notes_arr) do
+      out_midi:pitchbend(note_settings["bend"], i+1)
+      out_midi:note_on(note_settings["base"], note_settings["velocity"], i+1)
+    end
 
-    out_midi:note_off(message.note, 0, 1)
+  elseif message.type == "note_off" and message.note == pressed then
+    local notes_arr = get_mapped_or_base(pressed)
+    local note_settings = notes_arr[1]
+
+    for i, note_settings in pairs(notes_arr) do
+      out_midi:note_off(note_settings["base"], 0, i+1)
+    end
+    
+    pressed = nil
   end
 
   redraw()
