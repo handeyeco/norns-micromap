@@ -228,97 +228,95 @@ function redraw()
   screen.level(15)
 
   local notes_to_highlight = {}
-  if editing then
-    notes_to_highlight[editing] = editing
+  notes_to_highlight[editing] = editing
 
-    local base_map = get_base_arr(editing)
-    local base_note_settings = base_map[1]
+  local base_map = get_base_arr(editing)
+  local base_note_settings = base_map[1]
 
-    local note_arr = notes_map[editing]
-    if note_arr == nil then
-      note_arr = base_map
-    end
+  local note_arr = notes_map[editing]
+  if note_arr == nil then
+    note_arr = base_map
+  end
 
-    local note_settings = note_arr[note_index]
+  local note_settings = note_arr[note_index]
 
-    local col1_xoff = 10
-    local col2_xOff = 66
-    local row_stride = 10
-    -- row 1
-    local yOff = 6
+  local col1_xoff = 10
+  local col2_xOff = 66
+  local row_stride = 10
+  -- row 1
+  local yOff = 6
 
-    if loaded_preset_name then
-      screen.level(1)
-      screen.move(2, yOff)
-      screen.text(loaded_preset_name)
-    end
+  if loaded_preset_name then
+    screen.level(1)
+    screen.move(2, yOff)
+    screen.text(loaded_preset_name)
+  end
 
-    -- row 2
-    yOff = yOff + row_stride
+  -- row 2
+  yOff = yOff + row_stride
 
-    -- edit trigger note
-    set_active_level(param_index, PARAM_INDEX_TRIGGER)
+  -- edit trigger note
+  set_active_level(param_index, PARAM_INDEX_TRIGGER)
+  screen.move(col1_xoff, yOff)
+  screen.text("Trig: "..key_map[editing])
+
+  -- edit note index
+  set_active_level(param_index, PARAM_INDEX_NOTE)
+  screen.move(col2_xOff, yOff)
+  local next_note_index = util.clamp(#note_arr + 1, 1, 15)
+  screen.text("Note: "..note_index.."/"..next_note_index)
+
+  -- row 3
+  yOff = yOff + row_stride
+
+  if note_index > #note_arr then
     screen.move(col1_xoff, yOff)
-    screen.text("Trig: "..key_map[editing])
+    screen.level(1)
+    screen.text("Press k2 to add note")
+    screen.update()
+    return
+  end
 
-    -- edit note index
-    set_active_level(param_index, PARAM_INDEX_NOTE)
-    screen.move(col2_xOff, yOff)
-    local next_note_index = util.clamp(#note_arr + 1, 1, 15)
-    screen.text("Note: "..note_index.."/"..next_note_index)
+  -- edit base note
+  set_active_level(param_index, PARAM_INDEX_BASE)
+  screen.move(col1_xoff, yOff)
+  screen.text("Base: "..key_map[note_settings["base"]])
+  mark_dirty(col1_xoff, yOff, note_settings["base"] ~= base_note_settings["base"])
 
-    -- row 3
-    yOff = yOff + row_stride
+  -- edit pitch offset
+  set_active_level(param_index, PARAM_INDEX_BEND)
+  screen.move(col2_xOff, yOff)
+  screen.text("Bend: "..note_settings["bend"])
+  mark_dirty(col2_xOff, yOff, note_settings["bend"] ~= base_note_settings["bend"])
 
-    if note_index > #note_arr then
-      screen.move(col1_xoff, yOff)
-      screen.level(1)
-      screen.text("Press k2 to add note")
-      screen.update()
-      return
-    end
+  -- row 4
+  yOff = yOff + row_stride
 
-    -- edit base note
-    set_active_level(param_index, PARAM_INDEX_BASE)
-    screen.move(col1_xoff, yOff)
-    screen.text("Base: "..key_map[note_settings["base"]])
-    mark_dirty(col1_xoff, yOff, note_settings["base"] ~= base_note_settings["base"])
+  -- edit velocity
+  set_active_level(param_index, PARAM_INDEX_VELOCITY)
+  screen.move(10, yOff)
+  screen.text("Velo: "..note_settings["velocity"])
+  mark_dirty(col1_xoff, yOff, note_settings["velocity"] ~= base_note_settings["velocity"])
 
-    -- edit pitch offset
-    set_active_level(param_index, PARAM_INDEX_BEND)
-    screen.move(col2_xOff, yOff)
-    screen.text("Bend: "..note_settings["bend"])
-    mark_dirty(col2_xOff, yOff, note_settings["bend"] ~= base_note_settings["bend"])
+  -- row 5
+  yOff = yOff + row_stride
 
-    -- row 4
-    yOff = yOff + row_stride
-
-    -- edit velocity
-    set_active_level(param_index, PARAM_INDEX_VELOCITY)
+  -- delete
+  if notes_map[editing] ~= nil then
+    set_active_level(param_index, PARAM_INDEX_DELETE)
     screen.move(10, yOff)
-    screen.text("Velo: "..note_settings["velocity"])
-    mark_dirty(col1_xoff, yOff, note_settings["velocity"] ~= base_note_settings["velocity"])
-
-    -- row 5
-    yOff = yOff + row_stride
-
-    -- delete
-    if notes_map[editing] ~= nil then
-      set_active_level(param_index, PARAM_INDEX_DELETE)
-      screen.move(10, yOff)
-      local delete_text = (note_index == 1 and "Delete key map" or "Delete note")
-      if param_index == PARAM_INDEX_DELETE then
-        delete_text = delete_text.." (k2)"
-      end
-      screen.text(delete_text)
+    local delete_text = (note_index == 1 and "Delete key map" or "Delete note")
+    if param_index == PARAM_INDEX_DELETE then
+      delete_text = delete_text.." (k2)"
     end
+    screen.text(delete_text)
   end
 
   local notes_to_fill = {}
   for k,_ in pairs(notes_map) do
     notes_to_fill[k] = k
   end
-  draw_keyboard(60, notes_to_highlight, notes_to_fill, false)
+  draw_keyboard(59, notes_to_highlight, notes_to_fill, false, note_settings["base"])
 
   screen.update()
 end
@@ -462,8 +460,15 @@ function draw_key(xPos, yPos, highlighted, filled, filtered)
   end
 end
 
+function draw_base(xPos, yPos, is_base)
+  if not is_base then return end
+  screen.level(2)
+  screen.pixel(xPos, yPos + 4)
+  screen.fill()
+end
+
 -- draw a full keyboard
-function draw_keyboard(yPos, notesToHighlight, notesToFill, hideFilteredNotes)
+function draw_keyboard(yPos, notesToHighlight, notesToFill, hideFilteredNotes, base)
   local sorted_keys = tab.sort(key_map)
 
   -- handle moving the keyboard left/right
@@ -473,6 +478,7 @@ function draw_keyboard(yPos, notesToHighlight, notesToFill, hideFilteredNotes)
     local name = key_map[note]
     local highlight = notesToHighlight[note]
     local fill = notesToFill[note]
+    local is_base = note == base
 
     -- local filter = hideFilteredNotes and isFilteredNote(note)
     local filter = false
@@ -481,6 +487,7 @@ function draw_keyboard(yPos, notesToHighlight, notesToFill, hideFilteredNotes)
     if string.len(name) == 2 then
       -- white keys
       draw_key(xPos, yPos, highlight, fill, filter)
+      draw_base(xPos, yPos, is_base)
 
       -- mark middle c
       if note == 60 then
@@ -497,6 +504,7 @@ function draw_keyboard(yPos, notesToHighlight, notesToFill, hideFilteredNotes)
       -- black keys
       xPos = xPos - 2
       draw_key(xPos, yPos - 4, highlight, fill, filter)
+      draw_base(xPos, yPos, is_base)
       xPos = xPos + 2
     end
   end
