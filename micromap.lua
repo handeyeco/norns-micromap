@@ -49,7 +49,7 @@ shift_pressed = false
 
 -- paths for presets
 loaded_preset_name = nil
-loaded_preset_path = nil
+loaded_preset_filename = nil
 preset_dir = _path.data.."micromap/presets"
 user_preset_dir = preset_dir.."/user"
 
@@ -564,6 +564,12 @@ function parse_preset(path)
   return { preset_name = preset_name, mapping = mapping }
 end
 
+function get_file_name(file)
+  local file_name = file:match("[^/]*.mmap$")
+  return file_name:sub(0, #file_name - 5)
+end
+
+
 -- load a Micromap preset (.mmap)
 function load_preset(path)
   if (
@@ -584,7 +590,8 @@ function load_preset(path)
     f:close()
     parse_rv = parse_preset(path)
     loaded_preset_name = parse_rv["preset_name"]
-    loaded_preset_path = path
+    -- TODO this just needs to be the file name
+    loaded_preset_filename = get_file_name(path)
   end
 
   redraw()
@@ -613,7 +620,7 @@ function stringify_preset(name)
 end
 
 function get_saving_preset_name()
-  textentry.enter(get_saving_preset_filename, loaded_preset_name, "preset name")
+  textentry.enter(get_saving_preset_filename, loaded_preset_name, "display name")
 end
 
 function get_saving_preset_filename(preset_name)
@@ -627,8 +634,8 @@ function get_saving_preset_filename(preset_name)
 
   textentry.enter(
     function (preset_filename) save_preset(preset_name, preset_filename) end,
-    default,
-    "preset filename name"
+    loaded_preset_filename,
+    "file name (user/*.mmap)"
   )
 end
 
@@ -651,6 +658,9 @@ function save_preset(preset_name, preset_filename)
   local file = io.open(path, "w")
   file:write(stringify_preset(preset_name))
   file:close()
+
+  loaded_preset_name = preset_name
+  loaded_preset_filename = preset_filename
 
   redraw()
 end
