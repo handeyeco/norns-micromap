@@ -138,10 +138,13 @@ function handle_edit_param_enc(delta)
 
   -- edit base note
   if param_index == PARAM_INDEX_BASE then
-    out_midi:note_off(note_settings["base"], 0, note_index+1)
+    local prev_base = note_settings["base"]
     local mapped_delta = (shift_pressed and delta * 12 or delta)
     note_settings["base"] = util.clamp(note_settings["base"] + mapped_delta, 0, max_midi_byte)
-    out_midi:note_on(note_settings["base"], note_settings["velocity"], note_index+1)
+    if pressed == editing then
+      out_midi:note_off(prev_base, 0, note_index+1)
+      out_midi:note_on(note_settings["base"], note_settings["velocity"], note_index+1)
+    end
   
   -- edit bend
   elseif param_index == PARAM_INDEX_BEND then
