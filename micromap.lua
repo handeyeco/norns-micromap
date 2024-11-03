@@ -138,13 +138,16 @@ function handle_edit_param_enc(delta)
 
   -- edit base note
   if param_index == PARAM_INDEX_BASE then
+    out_midi:note_off(note_settings["base"], 0, note_index+1)
     local mapped_delta = (shift_pressed and delta * 12 or delta)
     note_settings["base"] = util.clamp(note_settings["base"] + mapped_delta, 0, max_midi_byte)
+    out_midi:note_on(note_settings["base"], note_settings["velocity"], note_index+1)
   
   -- edit bend
   elseif param_index == PARAM_INDEX_BEND then
     local mapped_delta = (shift_pressed and delta * 100 or delta)
     note_settings["bend"] = util.clamp(note_settings["bend"] + mapped_delta, 0, max_bend)
+    out_midi:pitchbend(note_settings["bend"], note_index+1)
 
   -- edit velocity
   elseif param_index == PARAM_INDEX_VELOCITY then
@@ -364,13 +367,14 @@ function handle_midi_event(data)
   local message = midi.to_msg(data)
 
   if message.type == "note_on" and not pressed then
-    if editing ~= message.note then
-      note_index = 1
-      param_index = 1
-    end
+    -- TODO add a lock? This is annoying as-is
+    -- if editing ~= message.note then
+    --   editing = message.note
+    --   note_index = 1
+    --   param_index = 1
+    -- end
 
     pressed = message.note
-    editing = message.note
 
     local notes_arr = get_mapped_or_base(pressed)
     local note_settings = notes_arr[1]
