@@ -48,6 +48,8 @@ PARAM_INDEX_DELETE = 6
 shift_pressed = false
 
 -- paths for presets
+loaded_preset_name = nil
+loaded_preset_path = nil
 preset_dir = _path.data.."micromap/presets"
 user_preset_dir = preset_dir.."/user"
 
@@ -239,21 +241,37 @@ function redraw()
 
     local note_settings = note_arr[note_index]
 
+    local col1_xoff = 10
+    local col2_xOff = 66
+    local row_stride = 10
+    -- row 1
+    local yOff = 6
+
+    if loaded_preset_name then
+      screen.level(1)
+      screen.move(2, yOff)
+      screen.text(loaded_preset_name)
+    end
+
+    -- row 2
+    yOff = yOff + row_stride
+
     -- edit trigger note
-    local trigger_yOff = 10
     set_active_level(param_index, PARAM_INDEX_TRIGGER)
-    screen.move(10, trigger_yOff)
-    screen.text("Trigger: "..key_map[editing])
+    screen.move(col1_xoff, yOff)
+    screen.text("Trig: "..key_map[editing])
 
     -- edit note index
-    local base_yOff = 18
     set_active_level(param_index, PARAM_INDEX_NOTE)
-    screen.move(10, base_yOff)
+    screen.move(col2_xOff, yOff)
     local next_note_index = util.clamp(#note_arr + 1, 1, 15)
-    screen.text("Note index: "..note_index.."/"..next_note_index)
+    screen.text("Note: "..note_index.."/"..next_note_index)
+
+    -- row 3
+    yOff = yOff + row_stride
 
     if note_index > #note_arr then
-      screen.move(10, 26)
+      screen.move(col1_xoff, yOff)
       screen.level(1)
       screen.text("Press k2 to add note")
       screen.update()
@@ -261,31 +279,33 @@ function redraw()
     end
 
     -- edit base note
-    local base_yOff = 26
     set_active_level(param_index, PARAM_INDEX_BASE)
-    screen.move(10, base_yOff)
-    screen.text("Base note: "..key_map[note_settings["base"]])
-    mark_dirty(base_yOff, note_settings["base"] ~= base_note_settings["base"])
+    screen.move(col1_xoff, yOff)
+    screen.text("Base: "..key_map[note_settings["base"]])
+    mark_dirty(col1_xoff, yOff, note_settings["base"] ~= base_note_settings["base"])
 
     -- edit pitch offset
-    local bend_yOff = 34
     set_active_level(param_index, PARAM_INDEX_BEND)
-    screen.move(10, bend_yOff)
+    screen.move(col2_xOff, yOff)
     screen.text("Bend: "..note_settings["bend"])
-    mark_dirty(bend_yOff, note_settings["bend"] ~= base_note_settings["bend"])
+    mark_dirty(col2_xOff, yOff, note_settings["bend"] ~= base_note_settings["bend"])
+
+    -- row 4
+    yOff = yOff + row_stride
 
     -- edit velocity
-    local velocity_yOff = 42
     set_active_level(param_index, PARAM_INDEX_VELOCITY)
-    screen.move(10, velocity_yOff)
-    screen.text("Velocity: "..note_settings["velocity"])
-    mark_dirty(velocity_yOff, note_settings["velocity"] ~= base_note_settings["velocity"])
+    screen.move(10, yOff)
+    screen.text("Velo: "..note_settings["velocity"])
+    mark_dirty(col1_xoff, yOff, note_settings["velocity"] ~= base_note_settings["velocity"])
+
+    -- row 5
+    yOff = yOff + row_stride
 
     -- delete
     if notes_map[editing] ~= nil then
-      local delete_yOff = 50
       set_active_level(param_index, PARAM_INDEX_DELETE)
-      screen.move(10, delete_yOff)
+      screen.move(10, yOff)
       local delete_text = (note_index == 1 and "Delete key map" or "Delete note")
       if param_index == PARAM_INDEX_DELETE then
         delete_text = delete_text.." (k2)"
@@ -303,12 +323,12 @@ function redraw()
   screen.update()
 end
 
-function mark_dirty(yOff, isDirty)
+function mark_dirty(xOff, yOff, isDirty)
   if not isDirty then
     return
   end
 
-  screen.move(2, yOff)
+  screen.move(xOff - 8, yOff)
   screen.level(2)
   screen.text("-")
 end
@@ -533,7 +553,7 @@ function parse_preset(path)
     end
   end
 
-  return mapping
+  return { preset_name = preset_name, mapping = mapping }
 end
 
 -- load a Micromap preset (.mmap)
@@ -554,7 +574,9 @@ function load_preset(path)
     return
   else
     f:close()
-    notes_map = parse_preset(path)
+    parse_rv = parse_preset(path)
+    loaded_preset_name = parse_rv["preset_name"]
+    loaded_preset_path = path
   end
 
   redraw()
@@ -583,7 +605,7 @@ function stringify_preset(name)
 end
 
 function get_saving_preset_name()
-  textentry.enter(get_saving_preset_filename, default, "preset name")
+  textentry.enter(get_saving_preset_filename, loaded_preset_name, "preset name")
 end
 
 function get_saving_preset_filename(preset_name)
