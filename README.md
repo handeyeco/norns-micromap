@@ -27,7 +27,7 @@ Micromap accepts one MIDI note at a time and maps that note to between 1 and 15 
 - **Trig**: select which incoming note you want to edit
 - **Note** (1-15): select which of the outgoing notes you want to edit
   - **Base** (0-127): the base note of the selected output note
-  - **Bend** (0-16383): the pitch bend value of the selected output note, none is 8192 and MPE devices should map this between -24/+24 semitones
+  - **Bend** (0-16383): the pitch bend value of the selected output note (8192 is no bend); MPE devices should map this between -24/+24 semitones
   - **Velo** (0-127): the velocity of the selected output note
 - **Delete key map** (on the first note): delete the complete mapping for the selected trigger note; only available if the mapping has been changed from the default
 - **Delete note** (on notes after the first note): delete selected output note; only available if there are more than one output notes
