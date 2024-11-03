@@ -2,6 +2,8 @@
 --
 -- by handeyeco
 
+textentry = require('textentry')
+
 max_bend = 16383
 bend_center = 8192
 max_midi_byte = 127
@@ -208,6 +210,9 @@ function key(n,z)
   elseif z == 0 then
     if n == 3 then
       shift_pressed = false
+    elseif shift_pressed and n == 2 then
+      get_saving_preset_name()
+      return
     end
   end
 
@@ -550,7 +555,6 @@ function load_preset(path)
   else
     f:close()
     notes_map = parse_preset(path)
-    print(stringify_preset("Test"))
   end
 
   redraw()
@@ -561,9 +565,9 @@ function clear_preset()
   redraw()
 end
 
--- convert in-memory mapping to a Ripchord preset (.rpc) which is XML
+-- convert in-memory mapping to a Micromap preset (.mmap) which is XML
 function stringify_preset(name)
-  local start_str = '<?xml version="1.0" encoding="UTF-8"?>\n<micromap>\n  <preset name"'..name..'">\n'
+  local start_str = '<?xml version="1.0" encoding="UTF-8"?>\n<micromap>\n  <preset name="'..name..'">\n'
   local end_str = '  </preset>\n</micromap>'
 
   local output = start_str
@@ -578,26 +582,45 @@ function stringify_preset(name)
   return output..end_str
 end
 
--- -- save a Ripchord preset (.rpc) which is XML
--- function save_preset(name)
---   -- need a file name
---   if (name == nil or name == "") then
---     return
---   end
+function get_saving_preset_name()
+  textentry.enter(get_saving_preset_filename, default, "preset name")
+end
 
---   -- make sure the user preset dir exists
---   os.execute("mkdir -p "..user_preset_dir)
+function get_saving_preset_filename(preset_name)
+  print(preset_name)
+  if (
+    preset_name == nil
+    or preset_name == ""
+  ) then
+    return
+  end
 
---   -- write the file
---   local path = user_preset_dir.."/"..name..".rpc"
---   local file = io.open(path, "w")
---   file:write(stringify_preset())
---   file:close()
+  textentry.enter(
+    function (preset_filename) save_preset(preset_name, preset_filename) end,
+    default,
+    "preset filename name"
+  )
+end
 
---   -- update state
---   dirty = false
---   selected_preset_name = name
---   page = 0
+-- save a Micromap preset (.mmap) which is XML
+function save_preset(preset_name, preset_filename)
+  print(preset_filename)
+  -- need a file name
+  if (
+    preset_filename == nil
+    or preset_filename == ""
+  ) then
+    return
+  end
 
---   redraw()
--- end
+  -- make sure the user preset dir exists
+  os.execute("mkdir -p "..user_preset_dir)
+
+  -- write the file
+  local path = user_preset_dir.."/"..preset_filename..".mmap"
+  local file = io.open(path, "w")
+  file:write(stringify_preset(preset_name))
+  file:close()
+
+  redraw()
+end
