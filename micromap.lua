@@ -74,7 +74,7 @@ function init()
     action = setup_midi_callback}
 
   params:add{type = "option", id = "midi_out_device", name = "midi out device",
-    options = midi_devices, default = 2,
+    options = midi_devices, default = 1,
     action = setup_midi_callback}
 
   params:add_file("preset_path", "preset path", preset_dir)
@@ -368,6 +368,10 @@ end
 
 function handle_midi_event(data)
   local message = midi.to_msg(data)
+
+  if message.ch ~= params:get("midi_in_channel") then
+    return
+  end
 
   if message.type == "note_on" and not pressed then
     -- TODO add a lock? This is annoying as-is
