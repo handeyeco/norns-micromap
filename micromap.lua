@@ -45,6 +45,10 @@ PARAM_INDEX_DELETE = 6
 
 shift_pressed = false
 
+-- paths for presets
+preset_dir = _path.data.."micromap/presets"
+user_preset_dir = preset_dir.."/user"
+
 -- NORNS LIFECYCLE CALLBACKS
 -- NORNS LIFECYCLE CALLBACKS
 -- NORNS LIFECYCLE CALLBACKS
@@ -53,6 +57,9 @@ shift_pressed = false
 function init()
   generate_key_map()
   build_midi_device_list()
+
+  -- make sure there's a dir for presets
+  os.execute("mkdir -p "..user_preset_dir)
 
   params:add{type = "option", id = "midi_in_device", name = "midi in device",
     options = midi_devices, default = 1,
@@ -65,6 +72,9 @@ function init()
   params:add{type = "option", id = "midi_out_device", name = "midi out device",
     options = midi_devices, default = 2,
     action = setup_midi_callback}
+
+  params:add_file("preset_path", "preset path", preset_dir)
+  params:set_action("preset_path", function(file) load_preset(file) end)
 
   setup_midi_callback()
 end
@@ -470,3 +480,138 @@ end
 function linear_map(x, in_min, in_max, out_min, out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 end
+
+-- PRESETS
+-- PRESETS
+-- PRESETS
+
+-- parse a Micromap preset (.mmap)
+-- TODO: make this more resilient to poorly formatted files
+function parse_preset(path)
+  local preset_name = nil
+  local trigger = nil
+  local note_arr = {}
+  local mapping = {}
+
+  -- iterate over each line of the file looking for data
+  for line in io.lines(path) do
+    -- look for preset name
+    if not preset_name then
+      preset_name = string.match(line, 'name="([^"]+)')
+
+    -- look for trigger
+    elseif trigger == nil then
+      trigger = string.match(line, 'note="([0-9]+)"')
+
+    -- look for end of trigger
+    elseif string.match(line, '</trigger>') then
+      if trigger and #note_arr then
+        mapping[tonumber(trigger)] = note_arr
+        trigger = nil
+        note_arr = {}
+      end
+
+    -- look for notes
+    else
+      local base = string.match(line, 'base="([0-9]+)"')
+      local bend = string.match(line, 'bend="([0-9]+)"')
+      local velocity = string.match(line, 'velocity="([0-9]+)"')
+
+      if (base ~= nil and bend ~= nil and velocity ~= nil) then
+        local note = {
+          base = tonumber(base),
+          bend = tonumber(bend),
+          velocity = tonumber(velocity)
+        }
+        table.insert(note_arr, note)
+      end
+    end
+  end
+
+  return mapping
+end
+
+-- load a Micromap preset (.mmap)
+function load_preset(path)
+  if (
+    not path
+    or path == "cancel"
+    or not string.sub(path, -5) == ".mmap"
+  ) then
+    print("Load preset cancelled or invalid path")
+    return
+  end
+
+  -- check if the file exists
+  local f = io.open(path,"r")
+  if f == nil then
+    print("file not found: "..path)
+    return
+  else
+    f:close()
+    notes_map = parse_preset(path)
+  end
+
+  redraw()
+end
+
+-- function clear_preset()
+--   note_to_notes = {}
+--   mapping_names = {}
+--   selected_preset_name = nil
+--   dirty = false
+--   page = 0
+--   redraw()
+-- end
+
+-- -- convert in-memory mapping to a Ripchord preset (.rpc) which is XML
+-- function stringify_preset()
+--   local start_str = '<?xml version="1.0" encoding="UTF-8"?>\n<ripchord>\n  <preset>\n'
+--   local end_str = '  </preset>\n</ripchord>'
+
+--   local output = start_str
+--   for note, map in pairs(note_to_notes) do
+--     output = output..'    <input note="'..note..'">\n      <chord name="'
+--     if mapping_names[note] then
+--       output = output..mapping_names[note]
+--     end
+--     output = output..'" notes="'
+
+--     -- bunch of BS to sort the notes
+--     local arr = {}
+--     for _, k in pairs(map) do
+--       table.insert(arr, k)
+--     end
+--     table.sort(arr, function(a, b) return a < b end)
+--     tab.print(arr)
+--     local merged = table.concat(arr, ";")
+
+--     output = output..merged..'"/>\n    </input>\n'
+--   end
+
+--   return output..end_str
+-- end
+
+-- -- save a Ripchord preset (.rpc) which is XML
+-- function save_preset(name)
+--   -- need a file name
+--   if (name == nil or name == "") then
+--     return
+--   end
+
+--   -- make sure the user preset dir exists
+--   os.execute("mkdir -p "..user_preset_dir)
+
+--   -- write the file
+--   local path = user_preset_dir.."/"..name..".rpc"
+--   local file = io.open(path, "w")
+--   file:write(stringify_preset())
+--   file:close()
+
+--   -- update state
+--   dirty = false
+--   selected_preset_name = name
+--   page = 0
+
+--   redraw()
+-- end
