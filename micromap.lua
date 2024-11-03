@@ -550,47 +550,33 @@ function load_preset(path)
   else
     f:close()
     notes_map = parse_preset(path)
+    print(stringify_preset("Test"))
   end
 
   redraw()
 end
 
--- function clear_preset()
---   note_to_notes = {}
---   mapping_names = {}
---   selected_preset_name = nil
---   dirty = false
---   page = 0
---   redraw()
--- end
+function clear_preset()
+  notes_map = {}
+  redraw()
+end
 
--- -- convert in-memory mapping to a Ripchord preset (.rpc) which is XML
--- function stringify_preset()
---   local start_str = '<?xml version="1.0" encoding="UTF-8"?>\n<ripchord>\n  <preset>\n'
---   local end_str = '  </preset>\n</ripchord>'
+-- convert in-memory mapping to a Ripchord preset (.rpc) which is XML
+function stringify_preset(name)
+  local start_str = '<?xml version="1.0" encoding="UTF-8"?>\n<micromap>\n  <preset name"'..name..'">\n'
+  local end_str = '  </preset>\n</micromap>'
 
---   local output = start_str
---   for note, map in pairs(note_to_notes) do
---     output = output..'    <input note="'..note..'">\n      <chord name="'
---     if mapping_names[note] then
---       output = output..mapping_names[note]
---     end
---     output = output..'" notes="'
+  local output = start_str
+  for trigger, note_arr in pairs(notes_map) do
+    output = output..'    <trigger note="'..trigger..'">\n'
+    for _, note in pairs(note_arr) do
+      output = output..'      <note base="'..note["base"]..'" bend="'..note["bend"]..'" velocity="'..note["velocity"]..'"/>\n'
+    end
+    output = output..'    </trigger>\n'
+  end
 
---     -- bunch of BS to sort the notes
---     local arr = {}
---     for _, k in pairs(map) do
---       table.insert(arr, k)
---     end
---     table.sort(arr, function(a, b) return a < b end)
---     tab.print(arr)
---     local merged = table.concat(arr, ";")
-
---     output = output..merged..'"/>\n    </input>\n'
---   end
-
---   return output..end_str
--- end
+  return output..end_str
+end
 
 -- -- save a Ripchord preset (.rpc) which is XML
 -- function save_preset(name)
