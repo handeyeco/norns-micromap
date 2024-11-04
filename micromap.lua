@@ -232,6 +232,9 @@ function key(n,z)
 
       -- delete
       elseif param_index == PARAM_INDEX_DELETE then
+        if editing == pressed then
+          handle_note_off(pressed)
+        end
         -- delete whole map
         if note_index == 1 then
           notes_map[editing] = nil
@@ -244,6 +247,9 @@ function key(n,z)
           note_index = note_index - 1
           param_index = 1
 
+        end
+        if editing == pressed then
+          handle_note_on(pressed)
         end
       end
     elseif n == 3 then
