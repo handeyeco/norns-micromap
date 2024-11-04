@@ -106,6 +106,12 @@ function get_mapped_or_base(note)
   return get_base_arr(note)
 end
 
+-- helper to reset editing page when moving around
+function return_to_first_note()
+  note_index = 1
+  param_index = 1
+end
+
 function handle_edit_param_enc(delta)
   if not editing then
     return
@@ -120,6 +126,7 @@ function handle_edit_param_enc(delta)
   -- edit trigger note
   if param_index == PARAM_INDEX_TRIGGER then
     editing = util.clamp(editing + delta, 0, max_midi_byte)
+    return_to_first_note()
     return
   end
 
@@ -185,8 +192,18 @@ function enc(n,d)
           pressed = nil
         end
       else
-        -- TODO prevent scrolling on new note page
-        local max_param_index = (notes_map[editing] == nil and 5 or 6)
+        local note_arr = get_mapped_or_base(editing)
+        local max_param_index
+        -- new note page
+        if note_index > #note_arr then
+          max_param_index = 2
+        -- delete button available
+        elseif notes_map[editing] ~= nil then
+          max_param_index = 6
+        -- default
+        else
+          max_param_index = 5
+        end
         param_index = util.clamp(param_index + d, 1, max_param_index)
       end
     elseif n == 3 then
@@ -224,7 +241,7 @@ function key(n,z)
         else
           table.remove(note_arr, note_index)
           notes_map[editing] = note_arr
-          note_index = 1
+          note_index = note_index - 1
           param_index = 1
 
         end
@@ -429,8 +446,7 @@ function handle_midi_event(data)
   if message.type == "note_on" then
     if not latch_note and editing ~= message.note then
       editing = message.note
-      note_index = 1
-      param_index = 1
+      return_to_first_note()
     end
 
     if pressed then
@@ -648,7 +664,6 @@ function load_preset(path)
     f:close()
     parse_rv = parse_preset(path)
     loaded_preset_name = parse_rv["preset_name"]
-    -- TODO this just needs to be the file name
     loaded_preset_filename = get_file_name(path)
   end
 
