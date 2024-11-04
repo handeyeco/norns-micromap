@@ -21,6 +21,7 @@ Micromap accepts one MIDI note at a time and maps that note to between 1 and 15 
 - **k2**: select
 - **k3**: shift
 - **k2** + **k3**: save
+- **e2** + **k3**: latch notes on (right) off (left)
 
 ### Parameters
 
@@ -39,6 +40,7 @@ Micromap accepts one MIDI note at a time and maps that note to between 1 and 15 
 - Use **Note** to add/edit additional output notes (up to 15) for a trigger note
 - Use **Delete note** to remove an output note from a mapping
 - Use **Delete key map** to restore mapping to its default state
+- Turn on latch notes (**e2** + **k3**) to hold the last played note while you're editing; you'll see a lock on the screen when it's enabled
 
 ### Save a preset
 

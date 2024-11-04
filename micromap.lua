@@ -17,6 +17,7 @@ out_midi = nil
 
 editing = 60
 pressed = nil
+latch_note = false
 
 -- midi note number to note name/octave
 key_map = {}
@@ -116,11 +117,11 @@ function handle_edit_param_enc(delta)
     note_arr[editing] = note_map
   end
 
-    -- edit trigger note
-    if param_index == PARAM_INDEX_TRIGGER then
-      editing = util.clamp(editing + delta, 0, max_midi_byte)
-      return
-    end
+  -- edit trigger note
+  if param_index == PARAM_INDEX_TRIGGER then
+    editing = util.clamp(editing + delta, 0, max_midi_byte)
+    return
+  end
 
   -- edit note index
   if param_index == PARAM_INDEX_NOTE then
@@ -150,12 +151,18 @@ function handle_edit_param_enc(delta)
   elseif param_index == PARAM_INDEX_BEND then
     local mapped_delta = (shift_pressed and delta * 100 or delta)
     note_settings["bend"] = util.clamp(note_settings["bend"] + mapped_delta, 0, max_bend)
-    out_midi:pitchbend(note_settings["bend"], note_index+1)
+    if pressed == editing then
+      out_midi:pitchbend(note_settings["bend"], note_index+1)
+    end
 
   -- edit velocity
   elseif param_index == PARAM_INDEX_VELOCITY then
     local mapped_delta = (shift_pressed and delta * 10 or delta)
     note_settings["velocity"] = util.clamp(note_settings["velocity"] + mapped_delta, 1, max_midi_byte)
+    if pressed == editing then
+      handle_note_off(pressed)
+      handle_note_on(pressed)
+    end
 
   end
 
@@ -171,9 +178,17 @@ function enc(n,d)
 
   if editing then
     if n == 2 then
-      -- TODO prevent scrolling on new note page
-      local max_param_index = (notes_map[editing] == nil and 5 or 6)
-      param_index = util.clamp(param_index + d, 1, max_param_index)
+      if shift_pressed then
+        latch_note = d > 0
+        if not latch_note and pressed then
+          handle_note_off(pressed)
+          pressed = nil
+        end
+      else
+        -- TODO prevent scrolling on new note page
+        local max_param_index = (notes_map[editing] == nil and 5 or 6)
+        param_index = util.clamp(param_index + d, 1, max_param_index)
+      end
     elseif n == 3 then
       handle_edit_param_enc(d)
     end
@@ -193,6 +208,10 @@ function key(n,z)
       if note_index > #note_arr then
         note_arr[note_index] = get_base_map(editing)
         notes_map[editing] = note_arr
+        if editing == pressed then
+          handle_note_off(pressed)
+          handle_note_on(pressed)
+        end
 
       -- delete
       elseif param_index == PARAM_INDEX_DELETE then
@@ -256,6 +275,21 @@ function redraw()
     screen.level(1)
     screen.move(2, yOff)
     screen.text(loaded_preset_name)
+  end
+
+  if latch_note then
+    local lock_xOff = 100
+    local lock_yOff = 36
+    screen.level(12)
+    screen.pixel(lock_xOff+2, lock_yOff)
+    screen.pixel(lock_xOff+1, lock_yOff+1)
+    screen.pixel(lock_xOff+3, lock_yOff+1)
+    screen.pixel(lock_xOff+1, lock_yOff+2)
+    screen.pixel(lock_xOff+3, lock_yOff+2)
+    screen.rect(lock_xOff, lock_yOff+3, 5, 4)
+    screen.fill()
+    screen.move(lock_xOff+6, lock_yOff+7)
+    screen.text("L")
   end
 
   -- row 2
@@ -366,6 +400,25 @@ function stop_all_notes()
   end
 end
 
+function handle_note_off(note)
+  local notes_arr = get_mapped_or_base(note)
+  local note_settings = notes_arr[1]
+
+  for i, note_settings in pairs(notes_arr) do
+    out_midi:note_off(note_settings["base"], 0, i+1)
+  end
+end
+
+function handle_note_on(note)
+  local notes_arr = get_mapped_or_base(note)
+  local note_settings = notes_arr[1]
+
+  for i, note_settings in pairs(notes_arr) do
+    out_midi:pitchbend(note_settings["bend"], i+1)
+    out_midi:note_on(note_settings["base"], note_settings["velocity"], i+1)
+  end
+end
+
 function handle_midi_event(data)
   local message = midi.to_msg(data)
 
@@ -373,32 +426,26 @@ function handle_midi_event(data)
     return
   end
 
-  if message.type == "note_on" and not pressed then
-    -- TODO add a lock? This is annoying as-is
-    -- if editing ~= message.note then
-    --   editing = message.note
-    --   note_index = 1
-    --   param_index = 1
-    -- end
+  if message.type == "note_on" then
+    if not latch_note and editing ~= message.note then
+      editing = message.note
+      note_index = 1
+      param_index = 1
+    end
+
+    if pressed then
+      handle_note_off(pressed)
+    end
 
     pressed = message.note
+    handle_note_on(pressed)
 
-    local notes_arr = get_mapped_or_base(pressed)
-    local note_settings = notes_arr[1]
-
-    for i, note_settings in pairs(notes_arr) do
-      out_midi:pitchbend(note_settings["bend"], i+1)
-      out_midi:note_on(note_settings["base"], note_settings["velocity"], i+1)
-    end
-
-  elseif message.type == "note_off" and message.note == pressed then
-    local notes_arr = get_mapped_or_base(pressed)
-    local note_settings = notes_arr[1]
-
-    for i, note_settings in pairs(notes_arr) do
-      out_midi:note_off(note_settings["base"], 0, i+1)
-    end
-    
+  elseif (
+    message.type == "note_off"
+    and message.note == pressed
+    and not latch_note
+  ) then
+    handle_note_off(pressed)
     pressed = nil
   end
 
