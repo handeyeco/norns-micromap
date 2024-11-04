@@ -30,6 +30,7 @@ The keyboard helps to reference a few things:
 - The lit note is the current trigger note being edited
 - Filled notes mean that the note has been edited from the default configuration
 - The dot below the keyboard is the base note for the current output note being edited
+- The dot above the keyboard is the currently pressed incoming note
 
 ### Parameters
 

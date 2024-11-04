@@ -324,22 +324,22 @@ function redraw()
     screen.text("L")
   end
 
-    -- indicator for follow mode
-    if follow then
-      local follow_xOff = 112
-      local follow_yOff = 36
-      screen.level(12)
-      screen.pixel(follow_xOff, follow_yOff+3)
-      screen.pixel(follow_xOff+1, follow_yOff+2)
-      screen.pixel(follow_xOff+4, follow_yOff+3)
-      screen.pixel(follow_xOff+3, follow_yOff+2)
-      screen.fill()
-      screen.move(follow_xOff+3, follow_yOff+1)
-      screen.line(follow_xOff+3, follow_yOff+7)
-      screen.stroke()
-      screen.move(follow_xOff+6, follow_yOff+7)
-      screen.text("F")
-    end
+  -- indicator for follow mode
+  if follow then
+    local follow_xOff = 112
+    local follow_yOff = 36
+    screen.level(12)
+    screen.pixel(follow_xOff, follow_yOff+3)
+    screen.pixel(follow_xOff+1, follow_yOff+2)
+    screen.pixel(follow_xOff+4, follow_yOff+3)
+    screen.pixel(follow_xOff+3, follow_yOff+2)
+    screen.fill()
+    screen.move(follow_xOff+3, follow_yOff+1)
+    screen.line(follow_xOff+3, follow_yOff+7)
+    screen.stroke()
+    screen.move(follow_xOff+6, follow_yOff+7)
+    screen.text("F")
+  end
 
   -- row 2
   yOff = yOff + row_stride
@@ -566,10 +566,18 @@ function draw_key(xPos, yPos, highlighted, filled, filtered)
   end
 end
 
+-- TODO merge these two helpers
 function draw_base(xPos, yPos, is_base)
   if not is_base then return end
   screen.level(2)
-  screen.pixel(xPos, yPos + 4)
+  screen.pixel(xPos, yPos + 3)
+  screen.fill()
+end
+
+function draw_pressed(xPos, yPos, is_pressed)
+  if not is_pressed then return end
+  screen.level(2)
+  screen.pixel(xPos, yPos - 7)
   screen.fill()
 end
 
@@ -585,6 +593,7 @@ function draw_keyboard(yPos, notesToHighlight, notesToFill, hideFilteredNotes, b
     local highlight = notesToHighlight[note]
     local fill = notesToFill[note]
     local is_base = note == base
+    local is_pressed = note == pressed
 
     -- local filter = hideFilteredNotes and isFilteredNote(note)
     local filter = false
@@ -593,6 +602,7 @@ function draw_keyboard(yPos, notesToHighlight, notesToFill, hideFilteredNotes, b
     if string.len(name) == 2 then
       -- white keys
       draw_key(xPos, yPos, highlight, fill, filter)
+      draw_pressed(xPos, yPos, is_pressed)
       draw_base(xPos, yPos, is_base)
 
       -- mark middle c
@@ -610,6 +620,7 @@ function draw_keyboard(yPos, notesToHighlight, notesToFill, hideFilteredNotes, b
       -- black keys
       xPos = xPos - 2
       draw_key(xPos, yPos - 4, highlight, fill, filter)
+      draw_pressed(xPos, yPos, is_pressed)
       draw_base(xPos, yPos, is_base)
       xPos = xPos + 2
     end
