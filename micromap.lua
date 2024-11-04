@@ -17,7 +17,11 @@ out_midi = nil
 
 editing = 60
 pressed = nil
-latch_note = false
+
+-- whether to hold a note after releasing the key (drone)
+latch_note = true
+-- whether to follow incoming MIDI notes
+follow = true
 
 -- midi note number to note name/octave
 key_map = {}
@@ -207,7 +211,11 @@ function enc(n,d)
         param_index = util.clamp(param_index + d, 1, max_param_index)
       end
     elseif n == 3 then
-      handle_edit_param_enc(d)
+      if shift_pressed then
+        follow = d > 0
+      else
+        handle_edit_param_enc(d)
+      end
     end
   end
 
@@ -300,6 +308,7 @@ function redraw()
     screen.text(loaded_preset_name)
   end
 
+  -- indicator for latched note mode
   if latch_note then
     local lock_xOff = 100
     local lock_yOff = 36
@@ -314,6 +323,23 @@ function redraw()
     screen.move(lock_xOff+6, lock_yOff+7)
     screen.text("L")
   end
+
+    -- indicator for follow mode
+    if follow then
+      local follow_xOff = 112
+      local follow_yOff = 36
+      screen.level(12)
+      screen.pixel(follow_xOff, follow_yOff+3)
+      screen.pixel(follow_xOff+1, follow_yOff+2)
+      screen.pixel(follow_xOff+4, follow_yOff+3)
+      screen.pixel(follow_xOff+3, follow_yOff+2)
+      screen.fill()
+      screen.move(follow_xOff+3, follow_yOff+1)
+      screen.line(follow_xOff+3, follow_yOff+7)
+      screen.stroke()
+      screen.move(follow_xOff+6, follow_yOff+7)
+      screen.text("F")
+    end
 
   -- row 2
   yOff = yOff + row_stride
@@ -450,7 +476,7 @@ function handle_midi_event(data)
   end
 
   if message.type == "note_on" then
-    if not latch_note and editing ~= message.note then
+    if follow and editing ~= message.note then
       editing = message.note
       return_to_first_note()
     end

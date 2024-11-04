@@ -17,11 +17,19 @@ Micromap accepts one MIDI note at a time and maps that note to between 1 and 15 
 
 - **e2**: select parameter
 - **e3**: adust parameter
-- **e3** + **k3**: fast adjust
+- **k3** + **e3**: fast adjust
 - **k2**: select
 - **k3**: shift
-- **k2** + **k3**: save
-- **e2** + **k3**: latch notes on (right) off (left)
+- **k3** + **k2**: save
+- **k3** + **e2**: latch notes on (right) off (left)
+- **k3** + **e3**: follow mode on (right) off (left)
+
+### Reading the keyboard
+
+The keyboard helps to reference a few things:
+- The lit note is the current trigger note being edited
+- Filled notes mean that the note has been edited from the default configuration
+- The dot below the keyboard is the base note for the current output note being edited
 
 ### Parameters
 
@@ -40,11 +48,12 @@ Micromap accepts one MIDI note at a time and maps that note to between 1 and 15 
 - Use **Note** to add/edit additional output notes (up to 15) for a trigger note
 - Use **Delete note** to remove an output note from a mapping
 - Use **Delete key map** to restore mapping to its default state
-- Turn on latch notes (**e2** + **k3**) to hold the last played note while you're editing; you'll see a lock on the screen when it's enabled
+- Turn on latch notes (**k3** + **e2**) to hold the last played note while you're editing; you'll see a lock on the screen when it's enabled
+- Use follow mode (**k3** + **e3**) to change the editing page when receiving a new MIDI in node; you'll see an arrow on the screen when it's enabled
 
 ### Save a preset
 
-- Press **k2** + **k3** to open the save prompt
+- Press **k3** + **k2** to open the save prompt
 - Select a display name for the preset
 - Select a file name for the preset
 - Preset will be saved as `data/micromap/presets/user/[NAME].mmap`
