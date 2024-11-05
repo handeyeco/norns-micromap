@@ -1,6 +1,28 @@
 -- micromap
+-- 
+-- - e2: parameter
+-- - e3: adust
+-- - k2: select
+-- - k3: shift
+-- 
+-- - k2 + e3: fast adjust
+-- - k3 + k2: save
+-- - k3 + e2: latch
+-- - k3 + e3: follow
+-- 
+-- trigger note
+-- sends 1-15 notes
+-- each with:
+-- - base note
+-- - pitch bend
+-- - velocity
 --
 -- by handeyeco
+-- 
+-- full docs:
+--   github.com
+--     /handeyeco
+--     /norns-micromap
 
 textentry = require('textentry')
 
@@ -50,7 +72,8 @@ PARAM_INDEX_VELOCITY = 5
 -- delete option
 PARAM_INDEX_DELETE = 6
 
-shift_pressed = false
+k2_pressed = false
+k3_pressed = false
 
 -- paths for presets
 loaded_preset_name = nil
@@ -151,7 +174,7 @@ function handle_edit_param_enc(delta)
   -- edit base note
   if param_index == PARAM_INDEX_BASE then
     local prev_base = note_settings["base"]
-    local mapped_delta = (shift_pressed and delta * 12 or delta)
+    local mapped_delta = (k2_pressed and delta * 12 or delta)
     note_settings["base"] = util.clamp(note_settings["base"] + mapped_delta, 0, max_midi_byte)
     if pressed == editing then
       out_midi:note_off(prev_base, 0, note_index+1)
@@ -160,7 +183,7 @@ function handle_edit_param_enc(delta)
   
   -- edit bend
   elseif param_index == PARAM_INDEX_BEND then
-    local mapped_delta = (shift_pressed and delta * 100 or delta)
+    local mapped_delta = (k2_pressed and delta * 100 or delta)
     note_settings["bend"] = util.clamp(note_settings["bend"] + mapped_delta, 0, max_bend)
     if pressed == editing then
       out_midi:pitchbend(note_settings["bend"], note_index+1)
@@ -168,7 +191,7 @@ function handle_edit_param_enc(delta)
 
   -- edit velocity
   elseif param_index == PARAM_INDEX_VELOCITY then
-    local mapped_delta = (shift_pressed and delta * 10 or delta)
+    local mapped_delta = (k2_pressed and delta * 10 or delta)
     note_settings["velocity"] = util.clamp(note_settings["velocity"] + mapped_delta, 1, max_midi_byte)
     if pressed == editing then
       handle_note_off(pressed)
@@ -189,7 +212,7 @@ function enc(n,d)
 
   if editing then
     if n == 2 then
-      if shift_pressed then
+      if k3_pressed then
         latch_note = d > 0
         if not latch_note and pressed then
           handle_note_off(pressed)
@@ -211,7 +234,7 @@ function enc(n,d)
         param_index = util.clamp(param_index + d, 1, max_param_index)
       end
     elseif n == 3 then
-      if shift_pressed then
+      if k3_pressed then
         follow = d > 0
       else
         handle_edit_param_enc(d)
@@ -226,6 +249,12 @@ end
 function key(n,z)
   -- press actions
   if z == 1 then
+    if n == 2 then
+      k2_pressed = true
+    elseif n == 3 then
+      k3_pressed = true
+    end
+
     if editing and n == 2 then
       local note_arr = get_mapped_or_base(editing)
 
@@ -260,15 +289,19 @@ function key(n,z)
           handle_note_on(pressed)
         end
       end
-    elseif n == 3 then
-      shift_pressed = true
     end
 
   -- release actions
   elseif z == 0 then
-    if n == 3 then
-      shift_pressed = false
-    elseif shift_pressed and n == 2 then
+    if n == 2 then
+      k2_pressed = false
+    elseif n == 3 then
+      k3_pressed = false
+    end
+
+    if k3_pressed and n == 2 then
+      k2_pressed = false
+      k3_pressed = false
       get_saving_preset_name()
       return
     end
@@ -571,12 +604,14 @@ function draw_base(xPos, yPos, is_base)
   if not is_base then return end
   screen.level(2)
   screen.pixel(xPos, yPos + 3)
+  screen.pixel(xPos, yPos + 4)
   screen.fill()
 end
 
 function draw_pressed(xPos, yPos, is_pressed)
   if not is_pressed then return end
   screen.level(2)
+  screen.pixel(xPos, yPos - 8)
   screen.pixel(xPos, yPos - 7)
   screen.fill()
 end

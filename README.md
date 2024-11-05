@@ -17,7 +17,7 @@ Micromap accepts one MIDI note at a time and maps that note to between 1 and 15 
 
 - **e2**: select parameter
 - **e3**: adust parameter
-- **k3** + **e3**: fast adjust
+- **k2** + **e3**: fast adjust
 - **k2**: select
 - **k3**: shift
 - **k3** + **k2**: save
