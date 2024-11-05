@@ -9,7 +9,13 @@ It's similar to my [Ripchord](https://github.com/handeyeco/norns-ripchord) scrip
 
 ## Usage
 
-Connect a MIDI controller to Norns so that you can send MIDI notes. Connect MIDI out to a device that supports [MPE](https://en.wikipedia.org/wiki/MIDI#MIDI_Polyphonic_Expression).
+Requirements:
+- non-MPE MIDI input device
+- [MPE](https://en.wikipedia.org/wiki/MIDI#MIDI_Polyphonic_Expression) enabled device to send MIDI MPE to
+
+## Usage
+
+Connect a MIDI controller to Norns so that you can send MIDI notes. Connect MIDI out to a device that supports MPE.
 
 Micromap accepts one MIDI note at a time and maps that note to between 1 and 15 outgoing notes.
 
