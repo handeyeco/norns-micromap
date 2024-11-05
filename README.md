@@ -1,6 +1,6 @@
 # Micromap
 
-Micromap is a [Norns](https://monome.org/docs/norns/) script for mapping incoming MIDI notes to a set out outgoing MPE MIDI notes. Each mapped note can include its own base note, pitch bend value, and velocity value.
+Micromap is a [Norns](https://monome.org/docs/norns/) script for mapping incoming MIDI notes to a set of outgoing MPE MIDI notes. Each mapped note can include its own base note, pitch bend value, and velocity value.
 
 It's similar to my [Ripchord](https://github.com/handeyeco/norns-ripchord) script except that the chords being sent can be [microtonal](https://en.wikipedia.org/wiki/Microtonality).
 
