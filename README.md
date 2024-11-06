@@ -59,7 +59,10 @@ The keyboard helps to reference a few things:
 - Use follow mode (**k3** + **e3**) to change the editing page when receiving a new MIDI in node; you'll see an arrow on the screen when it's enabled
 
 > [!TIP]  
-> The standard MPE pitch bend range is ±48 semitones (97 possible semitones: -48, 0, +48). This is mapped in MIDI to 0-16383 (16384 possible values). That means there's ≈168.9 MIDI steps per semitone (16384/97). If 8192 is the center (no pitch bend), then 8024 would be one semitone down and 8360 would be one semitone up.
+> The standard MPE pitch bend range is ±48 semitones (97 possible semitones: -48, 0, +48). This is mapped in MIDI to 0-16383 (16384 possible values). That means there's ≈168.9 MIDI steps per semitone (16384/97).
+> 
+> If 8192 is the center (no pitch bend), then 8024 would be one semitone down and 8360 would be one semitone up.
+> 
 > Just make sure your MPE device uses the ±48 range.
 
 ### Save a preset
